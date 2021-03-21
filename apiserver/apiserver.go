@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
+	"github.com/badoux/checkmail"
 )
 
 type Server struct {
@@ -61,7 +62,7 @@ func (s *Server) newRouter() http.Handler {
 
 	router.HandleFunc("/request", s.handlePostRequest).Methods("POST")
 
-	// add logging/tracing/correlation middleware
+	// add logging/correlation middleware
 	middlewareRouter := httputil.SetUpHandler(router, &httputil.HandlerConfig{
 		CorrelationEnabled: s.config.EnableReqCorrelation,
 		LoggingEnabled:     s.config.EnableReqLogging,
@@ -76,9 +77,9 @@ type Request struct {
 }
 
 type Book struct {
-	Title string
-	ID string
+	ID int
 	Available bool
+	Title string
 	Timestamp string
 }
 
@@ -90,6 +91,16 @@ func (s *Server) handlePostRequest(w http.ResponseWriter, req *http.Request) {
 	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	// Validate title
+	if len(request.Title) == 0 {
+		http.Error(w, "Must supply a title", http.StatusBadRequest)
+	}
+
+	// Validate email
+	if err := checkmail.ValidateFormat(request.Email); err != nil {
+		http.Error(w, "Invalid email address", http.StatusBadRequest)
 	}
 
 	// ISO-8601 formatted date/time
