@@ -32,11 +32,15 @@ type Server struct {
 
 // ServerConfig configuration for the message API server
 type Config struct {
+	// ServerAddr address to expose the apiserver
 	ServerAddr           string
+	// EnableReqCorrelation enable correlation IDs to be generated for all logs on a single request
 	EnableReqCorrelation bool
+	// EnableReqLogging enable logging details for each request
 	EnableReqLogging     bool
 }
 
+// NewServer creates a new apiserver and validates the configuration
 func NewServer(store LibraryStore, config *Config) (*Server, error) {
 	if err := validateConfig(config); err != nil {
 		return nil, err
@@ -48,6 +52,7 @@ func NewServer(store LibraryStore, config *Config) (*Server, error) {
 	}, nil
 }
 
+// Run runs the apiserver exposing at the specified port
 func (s *Server) Run() error {
 	router := s.newRouter()
 

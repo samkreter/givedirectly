@@ -22,6 +22,7 @@ type SQLStore struct {
 	db *sql.DB
 }
 
+// NewSQLStore creates a new sqlStore for access postgres
 func NewSQLStore(user, dbname, password, host string, port int) (*SQLStore, error){
 	connStr := fmt.Sprintf("host=%s port=%d user=%s "+
 		"password=%s dbname=%s sslmode=disable",
@@ -41,6 +42,7 @@ func NewSQLStore(user, dbname, password, host string, port int) (*SQLStore, erro
 	}, nil
 }
 
+// ListRequest returns all request from the database
 func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
 	rows, err := s.db.QueryContext(ctx, "SELECT id, email, title FROM requests")
 	if err != nil {
@@ -66,6 +68,7 @@ func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
 	return requests, nil
 }
 
+// GetRequest returns the specific request
 func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Request, error) {
 	request := &types.Request{}
 
@@ -82,6 +85,7 @@ func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Reque
 	return request, nil
 }
 
+// DeleteRequest removes the request and updates the associated book to available
 func (s *SQLStore) DeleteRequest(ctx context.Context, requestID int) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
