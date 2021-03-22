@@ -4,9 +4,11 @@ import (
 	"context"
 	"flag"
 	"github.com/samkreter/givedirectly/datastore"
+	"github.com/samkreter/givedirectly/types"
+	"time"
 
-	"github.com/samkreter/go-core/log"
 	"github.com/samkreter/givedirectly/apiserver"
+	"github.com/samkreter/go-core/log"
 )
 
 var (
@@ -43,16 +45,28 @@ func main() {
 		logger.Errorf("failed to set log level to : '%s'", logLvl)
 	}
 
+	// Ensure there's enough time for the postgres db to initialize. In prod, i'd use either retries or if it's deployed
+	// to Kubernetes, let the pod restarts handle it.
+	time.Sleep(time.Second * 3)
+
 	sqlStore, err := datastore.NewSQLStore(pgUser, pgDBName, pgPassword, pgHost, pgPort)
 	if err != nil {
 		logger.Fatal(err)
 	}
 
+	// Create all the required tables in the DB
 	if err := sqlStore.EnsureDB(); err != nil {
 		logger.Fatal(err)
 	}
 
-	if err := sqlStore.SeedDB(numToSeed); err != nil {
+	testBooks := []*types.Book{
+		{Available: true, Title: "testbook"},
+		{Available: true, Title: "testbook2"},
+		{Available: false, Title: "testbook3"},
+	}
+
+	// Seed the DB with some books. Use 3 known title books plus many randomly generated books
+	if err := sqlStore.SeedDB(numToSeed, testBooks...); err != nil {
 		logger.Fatal(err)
 	}
 

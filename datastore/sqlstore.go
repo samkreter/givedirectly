@@ -52,7 +52,7 @@ func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
 	defer rows.Close()
 	for rows.Next() {
 		request := &types.Request{}
-		if err := rows.Scan(&request.ID, &request.Email, request.Title); err != nil {
+		if err := rows.Scan(&request.ID, &request.Email, &request.Title); err != nil {
 			return nil, err
 		}
 
@@ -70,7 +70,7 @@ func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Reque
 	request := &types.Request{}
 
 	row := s.db.QueryRowContext(ctx, "SELECT id, email, title FROM requests WHERE id=$1", requestID)
-	if err := row.Scan(&request.ID, &request.Email, request.Title); err != nil {
+	if err := row.Scan(&request.ID, &request.Email, &request.Title); err != nil {
 		switch {
 		case err == sql.ErrNoRows:
 			return nil, ErrNotFound

@@ -1,0 +1,22 @@
+version: "3.7"
+services:
+  givedirectly:
+    build: .
+    depends_on:
+      - postgres
+    entrypoint:
+      - ./givedirectly
+      - -pg-password
+      - test1234
+      - -pg-host
+      - postgres
+    ports:
+      - "8080:8080"
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_PASSWORD=test1234
+      - POSTGRES_USER=librarystore
+      - POSTGRES_DB=librarystore
+    ports:
+      - 5432:5432
