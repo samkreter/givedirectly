@@ -60,3 +60,7 @@ golang.org/x/sys/unix
 golang.org/x/sys/windows
 # gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 gopkg.in/yaml.v3
+# syreclabs.com/go/faker v1.2.3
+## explicit
+syreclabs.com/go/faker
+syreclabs.com/go/faker/locales

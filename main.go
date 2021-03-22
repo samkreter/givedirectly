@@ -14,6 +14,8 @@ var (
 	pgHost, pgUser, pgPassword, pgDBName string
 	pgPort int
 
+	numToSeed int
+
 	serverConfig = &apiserver.Config{}
 )
 
@@ -30,6 +32,7 @@ func main() {
 	flag.StringVar(&pgDBName, "pg-dbname", "librarystore", "the postgres dbname")
 	flag.StringVar(&pgHost, "pg-host", "0.0.0.0", "the postgres host")
 	flag.IntVar(&pgPort, "pg-port", 5432, "the postgres port")
+	flag.IntVar(&numToSeed, "seednum", 100, "the number of books to seed the db")
 
 	flag.Parse()
 
@@ -46,6 +49,10 @@ func main() {
 	}
 
 	if err := sqlStore.EnsureDB(); err != nil {
+		logger.Fatal(err)
+	}
+
+	if err := sqlStore.SeedDB(numToSeed); err != nil {
 		logger.Fatal(err)
 	}
 

@@ -13,4 +13,5 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.23.0 // indirect
+	syreclabs.com/go/faker v1.2.3
 )
