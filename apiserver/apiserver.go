@@ -4,16 +4,26 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/samkreter/givedirectly/datastore"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
 	"github.com/badoux/checkmail"
+
+	"github.com/samkreter/givedirectly/types"
 )
+
+//go:generate sh -c "mockgen -package=mockstore github.com/samkreter/givedirectly/apiserver LibraryStore >./mockstore/mock_librarystore.go"
+
+type LibraryStore interface {
+	CreateRequest(ctx context.Context, request *types.Request) (*types.Book, error)
+}
 
 type Server struct {
 	config *Config
+	store LibraryStore
 }
 
 // ServerConfig configuration for the message API server
@@ -23,12 +33,13 @@ type Config struct {
 	EnableReqLogging     bool
 }
 
-func NewServer(config *Config) (*Server, error) {
+func NewServer(store LibraryStore, config *Config) (*Server, error) {
 	if err := validateConfig(config); err != nil {
 		return nil, err
 	}
 
 	return &Server{
+		store: store,
 		config:  config,
 	}, nil
 }
@@ -43,7 +54,6 @@ func (s *Server) Run() error {
 
 	return nil
 }
-
 
 func validateConfig(config *Config) error {
 	if config == nil {
@@ -71,25 +81,15 @@ func (s *Server) newRouter() http.Handler {
 	return middlewareRouter
 }
 
-type Request struct {
-	Email string
-	Title string
-}
-
-type Book struct {
-	ID int
-	Available bool
-	Title string
-	Timestamp string
-}
-
 func (s *Server) handlePostRequest(w http.ResponseWriter, req *http.Request) {
-	//logger := log.G(req.Context())
 	defer req.Body.Close()
 
-	var request Request
+	ctx := req.Context()
+	logger := log.G(req.Context())
+
+	var request *types.Request
 	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -103,8 +103,19 @@ func (s *Server) handlePostRequest(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Invalid email address", http.StatusBadRequest)
 	}
 
-	// ISO-8601 formatted date/time
-	//time.Now().Format(time.RFC3339)
+	book, err := s.store.CreateRequest(ctx, request)
+	switch {
+	case err == datastore.ErrNotFound:
+		http.Error(w, "Requested book not found", http.StatusBadRequest)
+	default:
+		logger.Errorf("failed to create request with error: %v", err)
+		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+	}
 
+	if err := json.NewEncoder(w).Encode(book); err != nil{
+		w.WriteHeader(http.StatusServiceUnavailable)
+		logger.Errorf("handlePostRequest: %v", err)
+		return
+	}
 	w.WriteHeader(http.StatusOK)
 }
