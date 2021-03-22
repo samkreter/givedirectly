@@ -2,6 +2,7 @@ package types
 
 
 type Request struct {
+	ID int
 	Email string
 	Title string
 }

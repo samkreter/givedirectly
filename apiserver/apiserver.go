@@ -6,6 +6,7 @@ import (
 	"errors"
 	"github.com/samkreter/givedirectly/datastore"
 	"net/http"
+	"strconv"
 
 	"github.com/badoux/checkmail"
 	"github.com/gorilla/mux"
@@ -19,6 +20,8 @@ import (
 
 type LibraryStore interface {
 	CreateRequest(ctx context.Context, request *types.Request) (*types.Book, error)
+	GetRequest(ctx context.Context, requestID int)  (*types.Request, error)
+	ListRequest(ctx context.Context)  ([]*types.Request, error)
 }
 
 type Server struct {
@@ -71,6 +74,8 @@ func (s *Server) newRouter() http.Handler {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/request", s.handlePostRequest).Methods("POST")
+	router.HandleFunc("/request", s.handleListRequest).Methods("GET")
+	router.HandleFunc("/request/{id}", s.handleGetRequest).Methods("GET")
 
 	// add logging/correlation middleware
 	middlewareRouter := httputil.SetUpHandler(router, &httputil.HandlerConfig{
@@ -118,11 +123,70 @@ func (s *Server) handlePostRequest(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-
 	if err := json.NewEncoder(w).Encode(book); err != nil{
 		w.WriteHeader(http.StatusServiceUnavailable)
 		logger.Errorf("handlePostRequest: %v", err)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) handleListRequest(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	logger := log.G(ctx)
+
+
+	requests, err := s.store.ListRequest(ctx)
+	if err != nil {
+		logger.Errorf("failed to list requests with error: %v", err)
+		http.Error(w, "failed with internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(requests)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		logger.Errorf("handleGetMessage: %v", err)
+		return
+	}
+}
+
+func (s *Server) handleGetRequest(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	logger := log.G(ctx)
+	vars := mux.Vars(req)
+
+	requestIDStr := vars["id"]
+	if requestIDStr == "" {
+		http.Error(w, "missing request id", http.StatusBadRequest)
+		return
+	}
+
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		http.Error(w, "invalid request id", http.StatusBadRequest)
+		return
+	}
+
+	request, err := s.store.GetRequest(ctx, requestID)
+	if err != nil {
+		switch {
+		case err == datastore.ErrNotFound:
+			http.Error(w, "request not found", http.StatusNotFound)
+			return
+		default:
+			logger.Errorf("failed to get request with error: %v", err)
+			http.Error(w, "failed with internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	err = json.NewEncoder(w).Encode(request)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		logger.Errorf("handleGetMessage: %v", err)
+		return
+	}
 }

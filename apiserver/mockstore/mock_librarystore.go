@@ -49,3 +49,33 @@ func (mr *MockLibraryStoreMockRecorder) CreateRequest(arg0, arg1 interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateRequest", reflect.TypeOf((*MockLibraryStore)(nil).CreateRequest), arg0, arg1)
 }
+
+// GetRequest mocks base method.
+func (m *MockLibraryStore) GetRequest(arg0 context.Context, arg1 int) (*types.Request, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRequest", arg0, arg1)
+	ret0, _ := ret[0].(*types.Request)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRequest indicates an expected call of GetRequest.
+func (mr *MockLibraryStoreMockRecorder) GetRequest(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRequest", reflect.TypeOf((*MockLibraryStore)(nil).GetRequest), arg0, arg1)
+}
+
+// ListRequest mocks base method.
+func (m *MockLibraryStore) ListRequest(arg0 context.Context) ([]*types.Request, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListRequest", arg0)
+	ret0, _ := ret[0].([]*types.Request)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListRequest indicates an expected call of ListRequest.
+func (mr *MockLibraryStoreMockRecorder) ListRequest(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRequest", reflect.TypeOf((*MockLibraryStore)(nil).ListRequest), arg0)
+}

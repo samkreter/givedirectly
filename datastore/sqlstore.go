@@ -41,6 +41,47 @@ func NewSQLStore(user, dbname, password, host string, port int) (*SQLStore, erro
 	}, nil
 }
 
+func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT id,, email, title FROM requests")
+	if err != nil {
+		return nil, err
+	}
+
+	requests := []*types.Request{}
+
+	defer rows.Close()
+	for rows.Next() {
+		request := &types.Request{}
+		if err := rows.Scan(&request.ID, &request.Email, request.Title); err != nil {
+			return nil, err
+		}
+
+		requests = append(requests, request)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return requests, nil
+}
+
+func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Request, error) {
+	request := &types.Request{}
+
+	row := s.db.QueryRowContext(ctx, "SELECT id,, email, title FROM requests WHERE id=$1", requestID)
+	if err := row.Scan(&request.ID, &request.Email, request.Title); err != nil {
+		switch {
+		case err == sql.ErrNoRows:
+			return nil, ErrNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return request, nil
+}
+
 // CreateRequest creates a checks if a book is available. If it is, then it updates the book and
 // creates a new request. Otherwise, it will return the book without creating the request. This is all
 // handled within a transaction to make sure the book does not change availability while the func is running.
