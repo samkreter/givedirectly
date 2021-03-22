@@ -42,7 +42,7 @@ func NewSQLStore(user, dbname, password, host string, port int) (*SQLStore, erro
 }
 
 func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id,, email, title FROM requests")
+	rows, err := s.db.QueryContext(ctx, "SELECT id, email, title FROM requests")
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (s *SQLStore) ListRequest(ctx context.Context)  ([]*types.Request, error) {
 func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Request, error) {
 	request := &types.Request{}
 
-	row := s.db.QueryRowContext(ctx, "SELECT id,, email, title FROM requests WHERE id=$1", requestID)
+	row := s.db.QueryRowContext(ctx, "SELECT id, email, title FROM requests WHERE id=$1", requestID)
 	if err := row.Scan(&request.ID, &request.Email, request.Title); err != nil {
 		switch {
 		case err == sql.ErrNoRows:
@@ -94,8 +94,8 @@ func (s *SQLStore) CreateRequest(ctx context.Context, request *types.Request) (*
 	book := &types.Book{}
 
 	// Get associated book
-	row := tx.QueryRowContext(ctx, "SELECT id, available, title, timeRequested FROM books WHERE title=?", request.Title)
-	if err := row.Scan(&book.ID, &book.Available, book.Title, book.TimeRequested); err != nil {
+	row := tx.QueryRowContext(ctx, "SELECT id, available, title, timeRequested FROM books WHERE title=$1", request.Title)
+	if err := row.Scan(&book.ID, &book.Available, &book.Title, &book.TimeRequested); err != nil {
 		tx.Rollback()
 		switch {
 		case err == sql.ErrNoRows:
@@ -113,8 +113,8 @@ func (s *SQLStore) CreateRequest(ctx context.Context, request *types.Request) (*
 	}
 
 	// Update the book with the ISO-8601 formatted date/time
-	timeRequested := time.Now().Format(time.RFC3339)
-	_, err = tx.ExecContext(ctx, "UPDATE books SET timeRequested=$1, available=false WHERE id=$2", timeRequested, book.ID)
+	book.TimeRequested = time.Now().Format(time.RFC3339)
+	_, err = tx.ExecContext(ctx, "UPDATE books SET timeRequested=$1, available=false WHERE id=$2", book.TimeRequested, book.ID)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -152,8 +152,8 @@ func (s *SQLStore) createBookTable() error {
 		CREATE TABLE IF NOT EXISTS books (
 			id serial PRIMARY KEY,
 			available BOOLEAN NOT NULL,
-			title text NOT NULL,
-			timeRequested text
+			title TEXT NOT NULL,
+			timeRequested TEXT NOT NULL DEFAULT ''
 		)`
 
 	if _, err := s.db.Exec(qry); err != nil {
@@ -166,9 +166,9 @@ func (s *SQLStore) createBookTable() error {
 func (s *SQLStore) createRequestTable() error {
 	const qry = `
 		CREATE TABLE IF NOT EXISTS requests (
-			id serial PRIMARY KEY,
-			email text NOT NULL,
-			title text NOT NULL
+			id SERIAL PRIMARY KEY,
+			email TEXT NOT NULL,
+			title TEXT NOT NULL
 		)`
 
 	if _, err := s.db.Exec(qry); err != nil {
