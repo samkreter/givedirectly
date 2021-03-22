@@ -82,6 +82,43 @@ func (s *SQLStore) GetRequest(ctx context.Context, requestID int)  (*types.Reque
 	return request, nil
 }
 
+func (s *SQLStore) DeleteRequest(ctx context.Context, requestID int) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	var title string
+	row := tx.QueryRowContext(ctx, "SELECT title FROM requests WHERE id=$1", requestID)
+	if err := row.Scan(&title); err != nil {
+		tx.Rollback()
+		switch {
+		case err == sql.ErrNoRows:
+			return ErrNotFound
+		default:
+			return err
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, "UPDATE books SET timeRequested='', available=true WHERE title=$1", title)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "DELETE FROM requests WHERE id=$1", requestID)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // CreateRequest creates a checks if a book is available. If it is, then it updates the book and
 // creates a new request. Otherwise, it will return the book without creating the request. This is all
 // handled within a transaction to make sure the book does not change availability while the func is running.

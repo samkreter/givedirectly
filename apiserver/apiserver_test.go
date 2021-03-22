@@ -297,3 +297,75 @@ func TestHandleListRequests(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode, "Should be internal error status code.")
 	})
 }
+
+func TestHandleDeleteRequest(t *testing.T){
+	t.Run("Success Case", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockLibraryStore := mockstore.NewMockLibraryStore(mockCtrl)
+
+		s := Server{
+			config: &Config{},
+			store: mockLibraryStore,
+		}
+
+		testServer := httptest.NewServer(s.newRouter())
+
+		testRequestID := 123
+
+		// mock the creatRequest
+		mockLibraryStore.EXPECT().DeleteRequest(gomock.Any(), testRequestID).
+			Return(nil).Times(1)
+
+		url := fmt.Sprintf("%s/%d", testServer.URL+"/request", testRequestID)
+		req, err := http.NewRequest("DELETE", url, nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode, "Should be success status code.")
+	})
+
+	t.Run("Request Not Found", func(t *testing.T) {
+		mockCtrl := gomock.NewController(t)
+		mockLibraryStore := mockstore.NewMockLibraryStore(mockCtrl)
+
+		s := Server{
+			config: &Config{},
+			store: mockLibraryStore,
+		}
+
+		testServer := httptest.NewServer(s.newRouter())
+
+		testRequestID := 123
+
+		mockLibraryStore.EXPECT().DeleteRequest(gomock.Any(), testRequestID).
+			Return(datastore.ErrNotFound).Times(1)
+
+		url := fmt.Sprintf("%s/%d", testServer.URL+"/request", testRequestID)
+		req, err := http.NewRequest("DELETE", url, nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusNotFound, resp.StatusCode, "Should return not found for no request.")
+	})
+
+	t.Run("Invalid Request ID", func(t *testing.T) {
+		s := Server{
+			config: &Config{},
+		}
+
+		testServer := httptest.NewServer(s.newRouter())
+
+		url := fmt.Sprintf("%s/%s", testServer.URL+"/request", "invalidReqeustID")
+		req, err := http.NewRequest("DELETE", url, nil)
+		require.NoError(t, err)
+
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode, "Should be badrequest status code.")
+	})
+}

@@ -22,6 +22,7 @@ type LibraryStore interface {
 	CreateRequest(ctx context.Context, request *types.Request) (*types.Book, error)
 	GetRequest(ctx context.Context, requestID int)  (*types.Request, error)
 	ListRequest(ctx context.Context)  ([]*types.Request, error)
+	DeleteRequest(ctx context.Context, requestID int) error
 }
 
 type Server struct {
@@ -76,6 +77,7 @@ func (s *Server) newRouter() http.Handler {
 	router.HandleFunc("/request", s.handlePostRequest).Methods("POST")
 	router.HandleFunc("/request", s.handleListRequest).Methods("GET")
 	router.HandleFunc("/request/{id}", s.handleGetRequest).Methods("GET")
+	router.HandleFunc("/request/{id}", s.handleDeleteRequest).Methods("DELETE")
 
 	// add logging/correlation middleware
 	middlewareRouter := httputil.SetUpHandler(router, &httputil.HandlerConfig{
@@ -189,4 +191,37 @@ func (s *Server) handleGetRequest(w http.ResponseWriter, req *http.Request) {
 		logger.Errorf("handleGetMessage: %v", err)
 		return
 	}
+}
+
+func (s *Server) handleDeleteRequest(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	logger := log.G(ctx)
+	vars := mux.Vars(req)
+
+	requestIDStr := vars["id"]
+	if requestIDStr == "" {
+		http.Error(w, "missing request id", http.StatusBadRequest)
+		return
+	}
+
+	requestID, err := strconv.Atoi(requestIDStr)
+	if err != nil {
+		http.Error(w, "invalid request id", http.StatusBadRequest)
+		return
+	}
+
+	err = s.store.DeleteRequest(ctx, requestID)
+	if err != nil {
+		switch {
+		case err == datastore.ErrNotFound:
+			http.Error(w, "request not found", http.StatusNotFound)
+			return
+		default:
+			logger.Errorf("failed to delete request with error: %v", err)
+			http.Error(w, "failed with internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
