@@ -7,10 +7,10 @@ import (
 	"github.com/samkreter/givedirectly/datastore"
 	"net/http"
 
+	"github.com/badoux/checkmail"
 	"github.com/gorilla/mux"
 	"github.com/samkreter/go-core/httputil"
 	"github.com/samkreter/go-core/log"
-	"github.com/badoux/checkmail"
 
 	"github.com/samkreter/givedirectly/types"
 )
@@ -96,21 +96,28 @@ func (s *Server) handlePostRequest(w http.ResponseWriter, req *http.Request) {
 	// Validate title
 	if len(request.Title) == 0 {
 		http.Error(w, "Must supply a title", http.StatusBadRequest)
+		return
 	}
 
 	// Validate email
 	if err := checkmail.ValidateFormat(request.Email); err != nil {
 		http.Error(w, "Invalid email address", http.StatusBadRequest)
+		return
 	}
 
 	book, err := s.store.CreateRequest(ctx, request)
-	switch {
-	case err == datastore.ErrNotFound:
-		http.Error(w, "Requested book not found", http.StatusBadRequest)
-	default:
-		logger.Errorf("failed to create request with error: %v", err)
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+	if err != nil {
+		switch {
+		case err == datastore.ErrNotFound:
+			http.Error(w, "Requested book not found", http.StatusNotFound)
+			return
+		default:
+			logger.Errorf("failed to create request with error: %v", err)
+			http.Error(w, "Failed to create request", http.StatusInternalServerError)
+			return
+		}
 	}
+
 
 	if err := json.NewEncoder(w).Encode(book); err != nil{
 		w.WriteHeader(http.StatusServiceUnavailable)

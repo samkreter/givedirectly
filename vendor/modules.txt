@@ -5,6 +5,9 @@ github.com/badoux/checkmail
 github.com/davecgh/go-spew/spew
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
 github.com/golang/groupcache/lru
+# github.com/golang/mock v1.5.0
+## explicit
+github.com/golang/mock/gomock
 # github.com/gorilla/mux v1.8.0
 ## explicit
 github.com/gorilla/mux
