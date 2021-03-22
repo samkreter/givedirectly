@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"context"
 	"time"
+	"fmt"
 
 	"github.com/pkg/errors"
 	_ "github.com/lib/pq"
@@ -21,9 +22,17 @@ type SQLStore struct {
 	db *sql.DB
 }
 
-func NewSQLStore(connStr string) (*SQLStore, error){
+func NewSQLStore(user, dbname, password, host string, port int) (*SQLStore, error){
+	connStr := fmt.Sprintf("host=%s port=%d user=%s "+
+		"password=%s dbname=%s sslmode=disable",
+		host, port, user, password, dbname)
+
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := db.Ping(); err != nil {
 		return nil, err
 	}
 
@@ -83,6 +92,19 @@ func (s *SQLStore) CreateRequest(ctx context.Context, request *types.Request) (*
 	return book, nil
 }
 
+// EnsureDB ensures the db has the correct tables set up
+func (s *SQLStore) EnsureDB() error {
+	if err := s.createBookTable(); err != nil {
+		return err
+	}
+
+	if err := s.createRequestTable(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 
 func (s *SQLStore) createBookTable() error {
 	const qry = `
@@ -90,7 +112,7 @@ func (s *SQLStore) createBookTable() error {
 			id serial PRIMARY KEY,
 			available BOOLEAN NOT NULL,
 			title text NOT NULL,
-			timeRequested text,
+			timeRequested text
 		)`
 
 	if _, err := s.db.Exec(qry); err != nil {
@@ -105,7 +127,7 @@ func (s *SQLStore) createRequestTable() error {
 		CREATE TABLE IF NOT EXISTS requests (
 			id serial PRIMARY KEY,
 			email text NOT NULL,
-			title text NOT NULL,
+			title text NOT NULL
 		)`
 
 	if _, err := s.db.Exec(qry); err != nil {
